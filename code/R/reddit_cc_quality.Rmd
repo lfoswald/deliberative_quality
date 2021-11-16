@@ -1,0 +1,923 @@
+---
+title: "Deliberation Content Coding"
+author: "Lisa F. Oswald"
+date: "`r format(Sys.time(), '%B %d, %Y | %H:%M:%S | %Z')`"
+output: 
+  html_document:
+    toc: FALSE
+    number_sections: FALSE
+    highlight: tango
+    theme: cosmo
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      error = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = NA)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(readxl)
+library(xtable)
+library(knitr)
+library(kableExtra)
+library(stargazer)
+library(writexl)
+library(irr)
+library(psych)
+```
+
+```{r, results=FALSE}
+data_coded <- read_excel("data_qual_allthreads_LO.xlsx")
+
+############ FULL SAMPLE ######
+data_coded <- data.frame(data_coded)
+which(colnames(data_coded)=="conspiracy") #59
+
+# replace NAs with 0
+data_coded[23:59][is.na(data_coded[23:59])] <- 0
+
+length(unique(data_coded$id_c)) # 1543 comments
+length(unique(data_coded$author_c)) # written by 572 unique authors
+length(unique(data_coded$thread_id)) # 524 sub-threads
+length(unique(data_coded$id_sub)) # 115 threads
+length(unique(data_coded$author_sub)) # 62 unique authors writing the submissions
+
+#### opposing content #####
+opposing_data <- data_coded%>%
+  filter(opposing == 1)
+
+length(unique(opposing_data$id_c)) # 167 / 1543 opposing comments
+length(unique(opposing_data$author_c)) # written by 92 authors
+length(unique(opposing_data$thread_id)) # 85 / 524 sub-threads
+length(unique(opposing_data$id_sub)) # 20 / 115 threads
+length(unique(opposing_data$author_sub)) # written by 15 authors
+ 
+# unrelated comments 
+table(data_coded$type_sub)
+
+thread <- data_coded %>% 
+  group_by(id_sub) %>% slice(1)
+table(is.na(thread$type_sub))
+
+######## FINAL SAMPLE - DROP UNRELATED THREADS ################
+
+data_final <- data_coded %>% 
+  filter(type_sub != 2)%>% # unrelated threads
+  filter(!is.na(type_sub)) # drop those where submissions was deleted (we don't have structural information about the thread then!)
+
+length(unique(data_final$id_c)) # 1442 comments
+length(unique(data_final$author_c)) # written by 539 unique authors
+length(unique(data_final$thread_id)) # 476 sub-threads
+length(unique(data_final$id_sub)) # 107 threads
+length(unique(data_final$author_sub)) # 58 unique authors writing the submissions
+
+#### opposing content #####
+opposing_data <- data_final%>%
+  filter(opposing == 1)
+
+length(unique(opposing_data$id_c)) # 167 / 1442 opposing comments
+length(unique(opposing_data$author_c)) # written by 92 authors
+length(unique(opposing_data$thread_id)) # 85 / 476 sub-threads
+length(unique(opposing_data$id_sub)) # 20 / 107 threads
+length(unique(opposing_data$author_sub)) # written by 15 authors
+ 
+```
+
+### Reliability Sample
+Exclude those submissions irrelevant for wildfires (category 2)
+
+```{r}
+# sample full threads
+sample_n_groups <- function(tbl, size, replace = FALSE, weight = NULL) {
+  # regroup when done
+  grps = tbl %>% groups %>% lapply(as.character) %>% unlist
+  # check length of groups non-zero
+  keep = tbl %>% summarise() %>% ungroup() %>% sample_n(size, replace, weight)
+  # keep only selected groups, regroup because joins change count.
+  # regrouping may be unnecessary but joins do something funky to grouping variable
+  tbl %>% right_join(keep, by=grps) %>% group_by_(.dots = grps)
+}
+
+# sample about 500 comments / third of sample 
+data_IRR <- data_coded%>%
+  filter(type_sub != 2)%>%
+  group_by(id_sub)%>%
+  sample_n_groups(40)
+
+#data_IRR%>%
+#  group_by(subreddit,wave,opposing)%>%
+#  summarize(n())%>%
+#  xtable()
+  
+write_xlsx(data_IRR, "data_IRR.xlsx")
+
+data_training <- data_coded%>%
+  filter(type_sub != 2)%>%
+  group_by(id_sub)%>%
+  sample_n_groups(3)
+
+# data_training%>%
+#  group_by(subreddit,wave,opposing)%>%
+#  summarize(n())%>%
+#  xtable()
+ 
+write_xlsx(data_training, "data_training.xlsx")
+```
+
+### Inter-Rater Reliability
+MPP student assistant coded 317 comments from various threads 
+```{r}
+IRR_sample_LO <- read_excel("data_qual_allthreads_LO.xlsx")
+IRR_sample_C1 <- read_excel("Coding_Grace_31.03.21.xlsx")
+
+IRR_sample_C1_coded <- IRR_sample_C1%>%
+  filter(!is.na(IRR_sample_C1$civ_rac))#%>%
+  #rename_at(vars(everything()), paste0, "_C1")
+
+IRR_sample_LO_coded <- IRR_sample_LO%>%
+  dplyr::filter(id_c %in% IRR_sample_C1_coded$id_c)%>%
+  # replace NAs with 0
+  mutate_if(is.numeric, ~replace_na(., 0))#%>%
+  #rename_at(vars(everything()), paste0, "_LO")
+
+#table(posts_irr$civ_cap_LO, posts_irr$civ_cap_C1)
+
+var_names <- c("civ_cap",  "civ_ins"  ,        
+           "civ_sar"  ,  "civ_ste"  ,    "civ_sex",  "civ_rac",          
+           "civ_vul"  ,  "civ_lie"  ,    "civ_thr",  "civ_pat",          
+           "humor"    ,  "rat_que" ,     "rat_top",  "rat_arg",          
+           "rat_rat"  ,  "rat_mor"  ,    "rat_bal",  "rat_del",          
+           "rat_kno"  ,  "rat_exp"  ,    "rec_use",  "rec_all",          
+           "rec_med"  ,  "rec_pos"  ,    "rec_neg",  "emp_emo",          
+           "emp_cog"  ,  "emo_ang"  ,    "emo_fea",  "emo_hap",          
+           "emo_sad"  ,  "emo_sur"  ,    "emo_dis",  "appeal" )
+
+perc_agree <- c()
+base_rate <- c()
+krip_alpha <- c()
+cohen_kappa <- c()
+
+
+for(var in var_names) {
+  dat = cbind(IRR_sample_LO_coded[var],IRR_sample_C1_coded[var])
+  
+  agree = agree(dat)
+  perc_agree = c(perc_agree, agree$value)
+  
+  base = table(dat)[1]/sum(table(dat))
+  base_rate = c(base_rate, base)
+  
+  krip = kripp.alpha(t(dat))
+  krip_alpha = c(krip_alpha, krip$value)
+  
+  cohen = cohen.kappa(dat)
+  cohen_kappa = c(cohen_kappa, cohen$kappa)
+
+}
+
+IRR_summary <- data.frame(var_names, perc_agree, base_rate,  krip_alpha, cohen_kappa)
+
+
+IRR_summary%>%
+  mutate(across(where(is.numeric), round, 2))%>%
+  xtable()%>%
+  kable()%>% #kable("latex")
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+
+```
+
+### Constructing Scores for Deliberation Criteria
+* Build variable scales and try icc here
+* Scale variables to make them comparable (substract mean, divide by standard deviation)
+
+```{r}
+# Drop variables with low agreement
+# Use mean scores when disagreement for those values in variables with generally high agreement
+# Scale variables to make them comparable (substract mean, divide by standard deviation)
+
+# recode respect / civility variables
+data_coded <- data_final %>% 
+  mutate_at(c("civ_cap","civ_ins","civ_sar","civ_lie","civ_ste",
+              "civ_sex","civ_rac","civ_pat","civ_thr","civ_vul"), 
+               funs(recode(., `1`=0, `0`=1, .default = NaN)))
+
+
+# summary (mean) value for respect, reciprocity, argumentation,...
+data_coded <- data_coded%>%
+  mutate(respect = (civ_cap+civ_ins+civ_sar+civ_lie+civ_ste+civ_sex+civ_vul+
+           civ_rac+civ_pat+civ_thr)/10,
+        argumentation = (rat_arg+rat_que+rat_top+rat_rat+rat_mor+rat_bal+
+                          rat_del+rat_kno+rat_exp)/9,
+        reciprocity = ifelse(rec_use == 1 | rec_pos == 1 | rec_neg == 1, 1, 0),
+        deliberation = (respect+argumentation+reciprocity)/3,
+        empathy = (emp_cog+emp_emo)/2,
+        emotion = (emo_ang+emo_fea+emo_sad)/3)
+
+########## same for counter coded sample ##############
+IRR_sample_C1_coded <- IRR_sample_C1_coded %>% 
+     mutate_at(c("civ_cap","civ_ins","civ_sar","civ_lie","civ_ste",
+                 "civ_sex","civ_rac","civ_pat","civ_thr","civ_vul"), 
+               funs(recode(., `1`=0, `0`=1, .default = NaN)))
+
+IRR_sample_C1_coded <- IRR_sample_C1_coded%>%
+  mutate(respect = (civ_cap+civ_ins+civ_sar+civ_lie+civ_ste+civ_sex+civ_vul+
+           civ_rac+civ_pat+civ_thr)/10,
+        argumentation = (rat_arg+rat_que+rat_top+rat_rat+rat_mor+rat_bal+
+                          rat_del+rat_kno+rat_exp)/9,
+        reciprocity = ifelse(rec_use == 1 | rec_pos == 1 | rec_neg == 1, 1, 0),
+        deliberation = (respect+argumentation+reciprocity)/3,
+        empathy = (emp_cog+emp_emo)/2,
+        emotion = (emo_ang+emo_fea+emo_sad)/3)
+
+
+###### and for my subsample ########################
+IRR_sample_LO_coded <- IRR_sample_LO_coded %>% 
+     mutate_at(c("civ_cap","civ_ins","civ_sar","civ_lie","civ_ste",
+                 "civ_sex","civ_rac","civ_pat","civ_thr","civ_vul"), 
+               funs(recode(., `1`=0, `0`=1, .default = NaN)))
+
+IRR_sample_LO_coded <- IRR_sample_LO_coded%>%
+  mutate(respect = (civ_cap+civ_ins+civ_sar+civ_lie+civ_ste+civ_sex+civ_vul+
+           civ_rac+civ_pat+civ_thr)/10,
+        argumentation = (rat_arg+rat_que+rat_top+rat_rat+rat_mor+rat_bal+
+                          rat_del+rat_kno+rat_exp)/9,
+        reciprocity = ifelse(rec_use == 1 | rec_pos == 1 | rec_neg == 1, 1, 0),
+        deliberation = (respect+argumentation+reciprocity)/3,
+        empathy = (emp_cog+emp_emo)/2,
+        emotion = (emo_ang+emo_fea+emo_sad)/3)
+
+
+#### Get summary and ICC values of variables ######
+attach(data_coded)
+Var_list <- list(respect,argumentation,reciprocity, empathy,
+               emotion, humor)
+
+Mean_list <- c()
+Std_list <- c()
+
+for(V in Var_list){
+  
+  mean_var = mean(V,na.rm=T)
+  Mean_list = c(Mean_list, mean_var)
+  
+  sd_var = sd(V,na.rm=T)
+  Std_list = c(Std_list, sd_var)
+}
+
+vars <- c("respect","argumentation","reciprocity","empathy" , "emotion" ,"humor")
+
+summary <- data.frame(vars, Mean_list, Std_list)
+
+ICC <- c()
+ICC_p <- c()
+ICC_lower <- c()
+ICC_upper <- c()
+
+for(var in vars){
+  
+  dat = cbind(IRR_sample_LO_coded[var],IRR_sample_C1_coded[var])
+  
+  ICC_var = ICC(as.matrix(dat))
+  ICC = c(ICC, ICC_var$results[1,2])
+  ICC_p = c(ICC_p, ICC_var$results[1,6])
+  ICC_lower = c(ICC_lower, ICC_var$results[1,7])
+  ICC_upper = c(ICC_upper, ICC_var$results[1,8])
+}
+
+ICC_summary <- data.frame(vars, Mean_list, Std_list, ICC, ICC_lower, ICC_upper)
+
+ICC_summary%>%
+  mutate(across(where(is.numeric), round, 2))%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+
+
+
+```
+
+
+### Some descriptive Information
+
+```{r}
+# date range
+data_coded%>%
+  group_by(wave)%>%
+  summarize(start = min(date),
+            end = max(date))
+
+# comment in-degree range 
+data_coded%>%
+  group_by(subreddit)%>%
+  summarize(mean = min(in_degree_com),
+            max = max(in_degree_com))
+
+```
+
+### Create Thread data
+```{r}
+# variable_t as mean of scaled variable_n (non-scaled)
+
+data_t <- data_coded %>% 
+  dplyr::group_by(id_sub) %>% 
+  mutate(respect = mean(respect),
+         argumentation = mean(argumentation),
+         reciprocity = mean(reciprocity),
+         deliberation = mean(deliberation),
+         empathy = mean(empathy),
+         emotion = mean(emotion),
+         humor = mean(humor),
+         moderate = mean(moderate))
+  
+thread_data <- data_t%>%
+  group_by(id_sub)%>%
+  slice(1)
+
+```
+
+# Summary statistics for different communities
+
+```{r}  
+options(digits = 2)
+
+means <- data_coded %>%  
+  group_by(subreddit)%>%
+  summarize(deliberation = mean(deliberation),
+            argumentation = mean(argumentation),
+            respect = mean(respect),
+            reciprocity = mean(reciprocity),
+            humor = mean(humor),
+            empathy = mean(empathy),
+            emotion = mean(emotion),
+            comments = n()) 
+
+sds <- data_coded %>%  
+  group_by(subreddit)%>%
+  summarize(deliberation = sd(deliberation),
+            argumentation = sd(argumentation),
+            respect = sd(respect),
+            reciprocity = sd(reciprocity),
+            humor = sd(humor),
+            empathy = sd(empathy),
+            emotion = sd(emotion),
+            comments = n()) 
+
+
+vars <- list(deliberation,argumentation,respect,reciprocity,humor,empathy,emotion)
+var_names <- c("deliberation","argumentation","respect","reciprocity","humor",
+               "empathy","emotion")
+
+t <- c()
+t_p <- c()
+df <- c()
+
+for(var in vars){
+  
+  test = t.test(var ~ subreddit, data = data_coded)
+
+  t = c(t, test$statistic)
+  df = c(df, test$parameter)
+  t_p = c(t_p, round(test$p.value,3))
+
+}
+
+ts <- data.frame(var_names, t,df, t_p)
+ts[nrow(ts)+1,] <- NA
+ts.T <- t(ts[,2:ncol(ts)])
+colnames(ts.T) <- ts[,1]
+ts <- tibble::rownames_to_column(data.frame(ts.T), "stat")
+colnames(ts) <- colnames(means)
+
+rbind(means,sds,ts)%>%
+  xtable()%>%
+  kable()%>% #kable("latex")
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+
+### means for thread level data ###
+thread_data %>%  
+  group_by(subreddit)%>%
+  summarize(deliberation = mean(deliberation),
+            argumentation = mean(argumentation),
+            respect = mean(respect),
+            reciprocity = mean(reciprocity),
+            humor = mean(humor),
+            empathy = mean(empathy),
+            emotion = mean(emotion),
+            threads = n()) %>%
+  xtable()%>%
+  kable()%>% #kable("latex")
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+
+```
+
+Mean-values differ between comments and threads because thread sizes differ substantially. 
+
+
+## Group sizes 
+
+Number of Comments
+```{r}
+data_coded%>%
+  group_by(subreddit, wave)%>%
+  summarise(n())%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+```
+
+Number of Threads
+```{r}
+thread_data%>%
+  group_by(subreddit, wave)%>%
+  summarise(n())%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+```
+
+
+
+# Deliberative Quality 
+
+```{r, fig.show="hold", out.width="50%"}
+
+data <- data_coded
+
+par(mar = c(4, 4, .1, .1))
+# comment level data
+
+my.mean<-tapply(data[,"deliberation"],data[,"subreddit"],mean, na.rm =T)
+my.sd<-tapply(data[,"deliberation"],data[,"subreddit"],sd)
+my.nr<-as.vector(table(data[,"subreddit"]))
+my.se<-my.sd/sqrt(my.nr)
+
+my.df<-data.frame(groups=factor(names(my.mean),labels =c("climate change","climate skeptics")),
+                   mean=my.mean,
+                   sd=my.sd,
+                   se=my.se)
+
+ggplot(my.df, aes(x=groups, y=mean)) + 
+  geom_bar(stat="identity", aes(x=groups, y=mean),size=0.1,
+           width = 0.6, fill=c("seagreen3"), alpha = 0.7) + 
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(colour="black", size =12),
+    axis.text.y = element_text(colour="black", size =10), 
+    axis.title.x = element_text( colour="black", size=12),
+    axis.title.y = element_text( colour="black", size=12))+
+  labs(x="",y="Deliberative quality",title="Comment level data")+
+  geom_errorbar(aes(ymin = mean-my.se, ymax = mean+my.se), width=.1)
+
+thread_data <- data.frame(thread_data)
+
+my.mean<-tapply(thread_data[,"deliberation"],thread_data[,"subreddit"],mean, na.rm =T)
+my.sd<-tapply(thread_data[,"deliberation"],thread_data[,"subreddit"],sd)
+my.nr<-as.vector(table(thread_data[,"subreddit"]))
+my.se<-my.sd/sqrt(my.nr)
+
+my.df<-data.frame(groups=factor(names(my.mean),labels =c("climate change ","climate skeptic")),
+                   mean=my.mean,
+                   sd=my.sd,
+                   se=my.se)
+
+ggplot(my.df, aes(x=groups, y=mean)) + 
+  geom_bar(stat="identity", aes(x=groups, y=mean),size=0.1,
+           width = 0.6, fill=c("seagreen2"), alpha = 0.7) + 
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(colour="black", size =12),
+    axis.text.y = element_text(colour="black", size =10), 
+    axis.title.x = element_text( colour="black", size=12),
+    axis.title.y = element_text( colour="black", size=12))+
+  labs(x="",y="Deliberative quality", title="Thread level data")+
+  geom_errorbar(aes(ymin = mean-my.se, ymax = mean+my.se), width=.1)
+
+```
+
+```{r}
+# thread level data + grouped for subreddits
+
+df <- thread_data %>% 
+  group_by(subreddit, wave, opposing)%>%
+  summarise(se = sd(deliberation)/sqrt(length(deliberation)),
+                     mean = mean(deliberation))
+
+ggplot(df, aes(x=opposing, y=mean, fill = subreddit)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='white', alpha = 0.7) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.1,position=position_dodge(.9),alpha = 0.7)+
+  theme_bw()+
+  scale_fill_manual(values=c("seagreen3", "seagreen2"))+
+  labs(x="opposing submission content",y="deliberative quality of threads", title="Thread   level data")+
+  facet_grid(vars(wave))
+
+```
+
+### 3. Structurally deliberative discussion threads are also characterized by a higher deliberative quality.
+
+
+A. Number of different users engaged in thread
+B. Maximum width of thread at any given depth level
+
+```{r}
+# Unique authors
+data <- data%>%
+  dplyr::group_by(id_sub)%>%
+  dplyr::mutate(unique_authors = n_distinct(author_c))
+
+# Both other width metrics
+data1 <- data%>%
+  group_by(id_sub, depth_c)%>%
+  mutate(width_values = sum(in_degree_com))%>%
+  group_by(id_sub)%>%
+  mutate(gonzalez_width = max(width_values))
+
+data <- data1%>%
+  mutate(del_structure = max_thread_depth*mean_thread_width)%>%
+  mutate(del_complexity = max_thread_depth*unique_authors)%>%
+  mutate(del_complexity_G = max_thread_depth*gonzalez_width)
+
+# add new variables to thread data
+thread_data <- data%>%
+  dplyr::group_by(id_sub) %>% 
+  mutate(respect = mean(respect),
+         argumentation = mean(argumentation),
+         reciprocity = mean(reciprocity),
+         deliberation = mean(deliberation),
+         empathy = mean(empathy),
+         emotion = mean(emotion),
+         humor = mean(humor),
+         moderate = mean(moderate))%>%
+  slice(1)
+
+```
+
+
+```{r}
+mod1 <- lm(deliberation ~ del_complexity_G, data = data)
+mod2 <- lm(deliberation ~ del_complexity, data = data)
+mod3 <- lm(deliberation ~ del_complexity_G, data = thread_data)
+mod4 <- lm(deliberation ~ del_complexity, data = thread_data)
+
+stargazer(mod1, mod2, mod3, mod4, type = "text", omit = "Constant")
+```
+
+```{r}
+mod5 <- lm(scale(del_complexity)   ~ scale(argumentation) + scale(respect) + scale(reciprocity) + scale(empathy) + scale(emotion) + scale(humor), data = data)
+mod6 <- lm(scale(del_complexity_G) ~ scale(argumentation) + scale(respect) + scale(reciprocity) + scale(empathy) + scale(emotion) + scale(humor), data = data)
+mod7 <- lm(scale(del_complexity)   ~ scale(argumentation) + scale(respect) + scale(reciprocity) + scale(empathy) + scale(emotion) + scale(humor), data = thread_data)
+mod8 <- lm(scale(del_complexity_G) ~ scale(argumentation) + scale(respect) + scale(reciprocity) + scale(empathy) + scale(emotion) + scale(humor), data = thread_data)
+
+
+stargazer(mod5, mod6, mod7, mod8, type = "text", omit = "Constant")
+```
+
+
+
+```{r, fig.show="hold", out.width="30%"}
+
+par(mar = c(4, 4, .1, .1))
+
+ggplot(data, aes(y=deliberation, x=log(del_structure))) + 
+  geom_point(colour="seagreen3")+
+  geom_smooth(method=lm, color = "grey")+
+  theme_bw(base_size = 18)+
+  ylab("Deliberative Quality (Content Coding)")+
+  xlab("Structural Complexity (Network Metrics, In-Degrees)")
+
+ggplot(data, aes(y=deliberation, x=log(del_complexity))) + 
+  geom_point(color="seagreen3")+
+  geom_smooth(method=lm, color = "grey")+
+  theme_bw(base_size = 18)+
+  ylab("")+
+  xlab("Structural Complexity (Network Metrics, Users)")
+ 
+ggplot(data, aes(y=deliberation, x=log(del_complexity_G))) + 
+  geom_point(colour="seagreen3")+
+  geom_smooth(method=lm, color = "grey")+
+  theme_bw(base_size = 18)+
+  ylab("")+
+  xlab("Structural Complexity (Network Metrics, Gonzalez)")
+  
+```
+
+## Further Hypotheses
+
+### 4. Content within deliberative discussion threads is closer to the scientific consensus on climate change than less deliberative discussions.
+
+```{r}
+m1 <- lm(scale(deliberation) ~ subreddit + opposing + opposing * subreddit, data = thread_data)
+m2 <- lm(scale(del_complexity_G) ~ subreddit + opposing + opposing * subreddit, data = thread_data)
+m3 <- lm(scale(del_complexity) ~ subreddit + opposing + opposing * subreddit, data = thread_data)
+#m4 <- lm(del_structure ~ subreddit + opposing + opposing * subreddit, data = thread_data)
+
+stargazer(m1,m2,m3, type = "text", omit = "Constant")
+
+
+m5 <- lm(scale(deliberation) ~ subreddit + opposing + opposing * subreddit, data = data)
+m6 <- lm(scale(del_complexity_G) ~ subreddit + opposing + opposing * subreddit, data = data)
+m7 <- lm(scale(del_complexity) ~ subreddit + opposing + opposing * subreddit, data = data)
+#m8 <- lm(del_structure ~ subreddit + opposing + opposing * subreddit, data = data)
+
+stargazer(m5,m6,m7, type = "text", omit = "Constant")
+
+```
+
+```{r}
+ggplot(data, aes(x=scale(deliberation), y=scale(del_complexity_G), colour = subreddit)) + 
+  geom_point(alpha = 0.3, position = position_jitter(width = 0.3, height = 0.3, seed = 123))+
+  geom_point(data=thread_data, alpha = 0.3, size=10, position = position_jitter(width = 0.3, height = 0.3, seed = 123))+
+  geom_point(data=data %>% 
+               group_by(subreddit) %>% 
+               summarise_at(vars("deliberation","del_complexity_G"), mean),
+             size=3, shape=23, fill = "black",stroke = 1.5)+
+  scale_colour_manual(values = c("seagreen3", "steelblue3"))+
+  geom_smooth(data = thread_data, method=lm, size = 0.5, color = "black",alpha = 0.3)+
+  theme_bw()+
+  xlab("Deliberative quality (content coding)")+
+  ylab("Structural complexity (depth x max width)")
+  
+ggsave("scatter_final.pdf", width = 8, height = 6, dpi = 500)
+
+```
+
+# Deliberative Structure / Complexity (Number of Authors)
+
+```{r, fig.show="hold", out.width="50%"}
+
+data <- data.frame(data)
+
+par(mar = c(4, 4, .1, .1))
+# comment level data
+
+my.mean<-tapply(data[,"del_complexity"],data[,"subreddit"],mean, na.rm =T)
+my.sd<-tapply(data[,"del_complexity"],data[,"subreddit"],sd)
+my.nr<-as.vector(table(data[,"subreddit"]))
+my.se<-my.sd/sqrt(my.nr)
+
+my.df<-data.frame(groups=factor(names(my.mean),labels =c("climate change","climate skeptics")),
+                   mean=my.mean,
+                   sd=my.sd,
+                   se=my.se)
+
+my.df%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+  
+ggplot(my.df, aes(x=groups, y=mean)) + 
+  geom_bar(stat="identity", aes(x=groups, y=mean),size=0.1,
+           width = 0.6, fill=c("steelblue3"), alpha = 0.7) + 
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(colour="black", size =12),
+    axis.text.y = element_text(colour="black", size =10), 
+    axis.title.x = element_text( colour="black", size=12),
+    axis.title.y = element_text( colour="black", size=12))+
+  labs(x="",y="Deliberative structure (authors)",title="Comment level data")+
+  geom_errorbar(aes(ymin = mean-my.se, ymax = mean+my.se), width=.1)
+
+# thread level data
+thread_data <- data.frame(thread_data)
+
+my.mean<-tapply(thread_data[,"del_complexity"],thread_data[,"subreddit"],mean, na.rm =T)
+my.sd<-tapply(thread_data[,"del_complexity"],thread_data[,"subreddit"],sd)
+my.nr<-as.vector(table(thread_data[,"subreddit"]))
+my.se<-my.sd/sqrt(my.nr)
+
+my.df<-data.frame(groups=factor(names(my.mean),labels =c("climate change","climate skeptics")),
+                   mean=my.mean,
+                   sd=my.sd,
+                   se=my.se)
+
+my.df%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+  
+ggplot(my.df, aes(x=groups, y=mean)) + 
+  geom_bar(stat="identity", aes(x=groups, y=mean),size=0.1,
+           width = 0.6, fill=c("steelblue1"), alpha = 0.7) +
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(colour="black", size =12),
+    axis.text.y = element_text(colour="black", size =10), 
+    axis.title.x = element_text( colour="black", size=12),
+    axis.title.y = element_text( colour="black", size=12))+
+  labs(x="",y="Deliberative structure (authors)", title="Thread level data")+
+  geom_errorbar(aes(ymin = mean-my.se, ymax = mean+my.se), width=.1)
+
+```
+```{r}
+# thread level data + grouped for subreddits
+
+df <- thread_data %>% 
+  dplyr::group_by(subreddit, wave, opposing)%>%
+  dplyr::summarise(se = sd(del_complexity)/sqrt(length(del_complexity)),
+                     mean = mean(del_complexity))
+
+df%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+ggplot(df, aes(x=opposing, y=mean, fill = subreddit)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='white', alpha = 0.7) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.1,position=position_dodge(.9),alpha = 0.7)+
+  theme_bw()+
+  scale_fill_manual(values=c("steelblue3", "steelblue1"))+
+  labs(x="Opposing submission content",y="Deliberative structure (authors)", title="Thread level data")+
+  facet_grid(vars(wave))
+
+```
+
+
+
+# Deliberative Structure / Complexity (Gonzales-Bailon: Max Width)
+
+```{r, fig.show="hold", out.width="50%"}
+
+par(mar = c(4, 4, .1, .1))
+# comment level data
+
+my.mean<-tapply(data[,"del_complexity_G"],data[,"subreddit"],mean, na.rm =T)
+my.sd<-tapply(data[,"del_complexity_G"],data[,"subreddit"],sd)
+my.nr<-as.vector(table(data[,"subreddit"]))
+my.se<-my.sd/sqrt(my.nr)
+
+my.df<-data.frame(groups=factor(names(my.mean),labels =c("climate change","climate skeptics")),
+                   mean=my.mean,
+                   sd=my.sd,
+                   se=my.se)
+
+my.df%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+  
+ggplot(my.df, aes(x=groups, y=mean)) + 
+  geom_bar(stat="identity", aes(x=groups, y=mean),size=0.1,
+           width = 0.6, fill=c("steelblue3"), alpha = 0.7) + 
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(colour="black", size =12),
+    axis.text.y = element_text(colour="black", size =10), 
+    axis.title.x = element_text( colour="black", size=12),
+    axis.title.y = element_text( colour="black", size=12))+
+  labs(x="",y="Deliberative structure (max width)",title="Comment level data")+
+  geom_errorbar(aes(ymin = mean-my.se, ymax = mean+my.se), width=.1)
+
+# thread level data
+
+my.mean<-tapply(thread_data[,"del_complexity_G"],thread_data[,"subreddit"],mean, na.rm =T)
+my.sd<-tapply(thread_data[,"del_complexity_G"],thread_data[,"subreddit"],sd)
+my.nr<-as.vector(table(thread_data[,"subreddit"]))
+my.se<-my.sd/sqrt(my.nr)
+
+my.df<-data.frame(groups=factor(names(my.mean),labels =c("climate change","climate skeptics")),
+                   mean=my.mean,
+                   sd=my.sd,
+                   se=my.se)
+
+my.df%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+  
+ggplot(my.df, aes(x=groups, y=mean)) + 
+  geom_bar(stat="identity", aes(x=groups, y=mean),size=0.1,
+           width = 0.6, fill=c("steelblue1"), alpha = 0.7) + 
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(colour="black", size =12),
+    axis.text.y = element_text(colour="black", size =10), 
+    axis.title.x = element_text( colour="black", size=12),
+    axis.title.y = element_text( colour="black", size=12))+
+  labs(x="",y="Deliberative structure (max width)", title="Thread level data")+
+  geom_errorbar(aes(ymin = mean-my.se, ymax = mean+my.se), width=.1)
+
+```
+```{r}
+# thread level data + grouped for subreddits
+
+df <- thread_data %>% 
+  dplyr::group_by(subreddit, wave, opposing)%>%
+  dplyr::summarise(se = sd(del_complexity_G)/sqrt(length(del_complexity_G)),
+                     mean = mean(del_complexity_G))
+
+df%>%
+  xtable()%>%
+  kable()%>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+ggplot(df, aes(x=opposing, y=mean, fill = subreddit)) +
+  geom_bar(position=position_dodge(), stat="identity", colour='white', alpha = 0.7) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.1,position=position_dodge(.9),alpha = 0.7)+
+  theme_bw()+
+  scale_fill_manual(values=c("steelblue3", "steelblue1"))+
+  labs(x="Opposing submission content",y="Deliberative structure (max width)", title="Thread level data")+
+  facet_grid(vars(wave))
+
+```
+
+```{r}
+ggplot(thread_data, aes(max_thread_depth, gonzalez_width))+
+  geom_point(aes(colour = as.factor(opposing), size = n_comments_sub), 
+             position = position_jitter(width = 2, height = 2),
+             alpha = 0.5)+
+  theme_bw()+
+  facet_grid(vars(wave), vars(subreddit))+
+  xlab("Depth")+
+  ylab("Max Width")+
+  scale_colour_manual(name="Submission Content",
+                        labels=c("congruent", "opposing"),
+                        values=c("midnightblue", "darkorange2")) +
+  scale_size_continuous(name="Number of Comments")
+
+ggsave(file="G_width_depth.pdf",width = 8, height = 6, dpi = 500)
+```
+```{r}  
+options(digits = 2)
+
+means <- data %>%  
+  group_by(subreddit)%>%
+  summarize(sarcasm = mean(civ_sar),
+            paternalism = mean(civ_pat),
+            comments = n()) 
+
+sds <- data %>%  
+  group_by(subreddit)%>%
+  summarize(sarcasm = sd(civ_sar),
+            paternalism = sd(civ_pat),
+            comments = n()) 
+
+
+vars <- list(civ_sar, civ_pat)
+var_names <- c("sarcasm","paternalism")
+
+t <- c()
+t_p <- c()
+df <- c()
+
+for(var in vars){
+  
+  test = t.test(var ~ subreddit, data = data)
+
+  t = c(t, test$statistic)
+  df = c(df, test$parameter)
+  t_p = c(t_p, round(test$p.value,3))
+
+}
+
+ts <- data.frame(var_names, t,df, t_p)
+ts[nrow(ts)+1,] <- NA
+ts.T <- t(ts[,2:ncol(ts)])
+colnames(ts.T) <- ts[,1]
+ts <- tibble::rownames_to_column(data.frame(ts.T), "stat")
+colnames(ts) <- colnames(means)
+
+rbind(means,sds,ts)%>%
+  xtable()%>%
+  kable()%>% #kable("latex")
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE,
+                position = "center")
+
+```
