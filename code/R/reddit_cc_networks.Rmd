@@ -42,7 +42,7 @@ library(knitr)
 library(kableExtra)
 library(writexl)
 
-data_cc_networks <- read_excel("data_cc_networks_coded.xlsx")
+data_cc_networks <- read_excel("../../data/final/data_cc_networks_coded.xlsx")
 
 ## get depth metric for overall (big) thread
 
@@ -62,7 +62,7 @@ threads <- data_cc_networks%>%
   filter(type_sub != "is.na")
 
 ## load comment level data
-reddit_df_indegree <- read_csv("reddit_df_indegree_thread_id.csv")
+reddit_df_indegree <- read_csv("../../data/raw/reddit_df_indegree_thread_id.csv")
 
 ## merge comment data with trigger submissions
 
@@ -78,25 +78,25 @@ fire_data <- fire_data%>%
   group_by(subreddit_y, wave.y, thread_id)%>%
   mutate(sub_thread_id = group_indices())
 
-#write_xlsx(fire_data,"fire_data.xlsx")
+#write_xlsx(fire_data,"data/temp/fire_data.xlsx")
 
 # manual match contolling & thread sorting
 
 #### creating final dataset #####
-data <- read_excel("fire_data_clean.xlsx")
+data <- read_excel("../../data/temp/fire_data_clean.xlsx")
 
 # opposing variables 
 data <- data%>%
   mutate(opposing = ifelse((type_sub == 1 & subreddit == "climatechange"), 1, 
                     ifelse((type_sub == 0 & subreddit == "climateskeptics"), 1, 0)))
 
-write_xlsx(data,"data_fire_cc.xlsx")
+#write_xlsx(data,"data/temp/data_fire_cc.xlsx")
 
 ```
 
 ## Sample
 ```{r, results=FALSE}
-data <- read_excel("data_fire_cc.xlsx")
+data <- read_excel("../../data/temp/data_fire_cc.xlsx")
 
 #data <- data.frame(na.omit(data))
 
@@ -1336,7 +1336,7 @@ ggplot(data, aes(max_thread_depth, gonzalez_width))+
                         values=c("#2E8B57", "indianred")) +
   scale_size_continuous(name="Number of Comments")
 
-ggsave(file="G_width_depth.png",width = 8, height = 6, dpi = 500)
+ggsave(file="../../output/G_width_depth.png",width = 8, height = 6, dpi = 500)
 
 ```
 

@@ -36,7 +36,7 @@ library(psych)
 ```
 
 ```{r, results=FALSE}
-data_coded <- read_excel("data_qual_allthreads_LO.xlsx")
+data_coded <- read_excel("../../data/temp/data_qual_allthreads_LO.xlsx")
 
 ############ FULL SAMPLE ######
 data_coded <- data.frame(data_coded)
@@ -118,7 +118,7 @@ data_IRR <- data_coded%>%
 #  summarize(n())%>%
 #  xtable()
   
-write_xlsx(data_IRR, "data_IRR.xlsx")
+#write_xlsx(data_IRR, "data_IRR.xlsx")
 
 data_training <- data_coded%>%
   filter(type_sub != 2)%>%
@@ -130,14 +130,14 @@ data_training <- data_coded%>%
 #  summarize(n())%>%
 #  xtable()
  
-write_xlsx(data_training, "data_training.xlsx")
+#write_xlsx(data_training, "data_training.xlsx")
 ```
 
 ### Inter-Rater Reliability
 MPP student assistant coded 317 comments from various threads 
 ```{r}
-IRR_sample_LO <- read_excel("data_qual_allthreads_LO.xlsx")
-IRR_sample_C1 <- read_excel("Coding_Grace_31.03.21.xlsx")
+IRR_sample_LO <- read_excel("../../data/temp/data_qual_allthreads_LO.xlsx")
+IRR_sample_C1 <- read_excel("../../data/temp/Coding_Grace_31.03.21.xlsx")
 
 IRR_sample_C1_coded <- IRR_sample_C1%>%
   filter(!is.na(IRR_sample_C1$civ_rac))#%>%
@@ -662,7 +662,7 @@ ggplot(data, aes(x=scale(deliberation), y=scale(del_complexity_G), colour = subr
   xlab("Deliberative quality (content coding)")+
   ylab("Structural complexity (depth x max width)")
   
-ggsave("scatter_final.pdf", width = 8, height = 6, dpi = 500)
+ggsave("../../output/scatter_final.pdf", width = 8, height = 6, dpi = 500)
 
 ```
 
@@ -871,7 +871,7 @@ ggplot(thread_data, aes(max_thread_depth, gonzalez_width))+
                         values=c("midnightblue", "darkorange2")) +
   scale_size_continuous(name="Number of Comments")
 
-ggsave(file="G_width_depth.pdf",width = 8, height = 6, dpi = 500)
+ggsave(file="../../output/G_width_depth.pdf",width = 8, height = 6, dpi = 500)
 ```
 ```{r}  
 options(digits = 2)

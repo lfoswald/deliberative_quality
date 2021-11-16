@@ -2,3 +2,4 @@ data
 info
 output
 *.Rproj
+.Rproj.user

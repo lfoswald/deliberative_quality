@@ -18,3 +18,10 @@ This repository contains supplementary material related to a project to aims to 
 
 ## 2. Analysis `R`
 
+`reddit_cc_networks.R`
+* Descriptive analysis of comment thread width(s) and depth
+
+`reddit_cc_quality.R` - main analyses of paper.
+* Comparison of structural features with measures of deliberative quality from manual content coding
+* Calculation of inter-coder reliability
+
