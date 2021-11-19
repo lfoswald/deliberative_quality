@@ -40,38 +40,50 @@ prsp_score(comment_data$text_c[1], languages = "en",
            score_model = "TOXICITY", doNotStore = TRUE)
 
 #big run
-tox_data <- comment_data%>%
-  prsp_stream(text = text_c,
-              text_id = id_c,
-              score_model = c("TOXICITY", "SEVERE_TOXICITY"),
-              safe_output = T,
-              languages = "en",
-              doNotStore = TRUE)
+#tox_data <- comment_data%>%
+#  prsp_stream(text = text_c,
+#              text_id = id_c,
+#              score_model = c("TOXICITY", "SEVERE_TOXICITY"),
+#              safe_output = T,
+#              languages = "en",
+#              doNotStore = TRUE)
 
 head(tox_data)
+tox_data$id_c <- tox_data$text_id
 
-comment_data <- left_join(comment_data, tox_data, by = "id_c")
+comment_data <- left_join(comment_data, tox_data, by.y = "id_c")
+hist(comment_data$TOXICITY)
+
+comment_data%>%
+  arrange(desc(TOXICITY))%>%
+  select(text_c)%>%
+  head() # pretty accurate haha
 
 # add scores to thread data
 thread_data <- comment_data%>%
   dplyr::group_by(id_sub) %>% 
-  mutate(toxicity_a = mean(toxicity),
-         argumentation_a = mean(arg_l_coms),
-         reciprocity_a = mean(rec_n_coms))%>%
+  mutate(TOXICITY = mean(TOXICITY),
+         arg_l_coms = mean(arg_l_coms),
+         rec_n_coms = mean(rec_n_coms))%>%
   slice(1)
 
 
 write.csv(comment_data, file = "data/final/comment_data_tox.csv")
 write.csv(thread_data, file = "data/final/thread_data_tox.csv")
 
+########### Only run extension models ###########
+
+comment_data <- read.csv( "data/final/comment_data_tox.csv")
+thread_data <- read.csv("data/final/thread_data_tox.csv")
+
 ### Try to ameliorate automated analysis 
-mod1 <- lm(deliberation ~ del_complexity_G, data = data)
-mod2 <- lm(deliberation ~ del_complexity, data = data)
-mod3 <- lm(deliberation ~ del_complexity_G, data = thread_data)
-mod4 <- lm(deliberation ~ del_complexity, data = thread_data)
+mod1 <- lm(deliberation ~ scale(del_complexity_G), data = comment_data)
+mod2 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
+mod3 <- lm(deliberation ~ scale(del_complexity_G), data = thread_data)
+mod4 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
+mod5 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
+mod6 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
 
-stargazer(mod1, mod2, mod3, mod4, type = "text", omit = "Constant")
+stargazer(mod1, mod2,mod5, mod3, mod4, mod6, type = "text", omit = "Constant")
 
-  
-  
   
