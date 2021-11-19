@@ -161,11 +161,17 @@ var_names <- c("civ_cap",  "civ_ins"  ,
            "emp_cog"  ,  "emo_ang"  ,    "emo_fea",  "emo_hap",          
            "emo_sad"  ,  "emo_sur"  ,    "emo_dis",  "appeal" )
 
+
+guilford.g <- function(df){
+  po <- agree(df)
+  G <- (po$value/100 - 0.5)/0.5 #https://doi.apa.org/doiLanding?doi=10.1037%2Fa0037489
+  G
+}
+
 perc_agree <- c()
 base_rate <- c()
 krip_alpha <- c()
-cohen_kappa <- c()
-
+guilford_g <- c()
 
 for(var in var_names) {
   dat = cbind(IRR_sample_LO_coded[var],IRR_sample_C1_coded[var])
@@ -179,12 +185,12 @@ for(var in var_names) {
   krip = kripp.alpha(t(dat))
   krip_alpha = c(krip_alpha, krip$value)
   
-  cohen = cohen.kappa(dat)
-  cohen_kappa = c(cohen_kappa, cohen$kappa)
+  G = guilford.g(dat)
+  guilford_g = c(guilford_g, G)
 
 }
 
-IRR_summary <- data.frame(var_names, perc_agree, base_rate,  krip_alpha, cohen_kappa)
+IRR_summary <- data.frame(var_names, perc_agree, base_rate, guilford_g)
 
 
 IRR_summary%>%
