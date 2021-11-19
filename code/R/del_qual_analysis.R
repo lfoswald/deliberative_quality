@@ -293,7 +293,7 @@ ggplot(data, aes(x=scale(deliberation), y=scale(del_complexity_G), colour = subr
                group_by(subreddit) %>% 
                summarise_at(vars("deliberation","del_complexity_G"), mean),
              size=4, shape=23, fill = "black",stroke = 1.5)+
-  geom_smooth(data = data,  size = 0.5, color = "black",alpha = 0.3)+
+  geom_smooth(data = data, method = lm,  size = 0.5, color = "black",alpha = 0.3)+
   theme_bw()+
   scale_colour_manual(values = c("#fb9a99", "#1f78b4"))+
   labs(colour ="Subreddit Mean",

@@ -84,6 +84,6 @@ mod4 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n
 mod5 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
 mod6 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
 
-stargazer(mod1, mod2,mod5, mod3, mod4, mod6, type = "text", omit = "Constant")
+stargazer(mod1, mod2,mod5, mod3, mod4, mod6, type = "latex", omit = "Constant")
 
   
