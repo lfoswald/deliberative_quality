@@ -12,6 +12,7 @@ library(stargazer)
 library(writexl)
 library(psych)
 library(gridExtra)
+library(ggcorrplot)
 
 comment_data <- read.csv( "data/final/comment_data_preprocessed.csv")
 thread_data <- read.csv("data/final/thread_data_preprocessed.csv")
@@ -36,8 +37,8 @@ mean(comment_data$rec_n_coms)
 # add:  perspective_api_key="AIzaSyB0dABPIS0t0GkVKJM7mZlG8n4HDmtCcs8"
 
 #test
-prsp_score(comment_data$text_c[1], languages = "en",
-           score_model = "TOXICITY", doNotStore = TRUE)
+#prsp_score(comment_data$text_c[1], languages = "en",
+#           score_model = "TOXICITY", doNotStore = TRUE)
 
 #big run
 #tox_data <- comment_data%>%
@@ -47,8 +48,9 @@ prsp_score(comment_data$text_c[1], languages = "en",
 #              safe_output = T,
 #              languages = "en",
 #              doNotStore = TRUE)
+#
+#write_xlsx(tox_data, "data/temp/tox_data.xlsx")
 
-head(tox_data)
 tox_data$id_c <- tox_data$text_id
 
 comment_data <- left_join(comment_data, tox_data, by.y = "id_c")
@@ -84,6 +86,98 @@ mod4 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n
 mod5 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
 mod6 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
 
-stargazer(mod1, mod2,mod5, mod3, mod4, mod6, type = "latex", omit = "Constant")
+#thread level data
+stargazer(mod3, mod4, mod6, type = "latex", omit = "Constant")
+# comment level data
+stargazer(mod1, mod2, mod5, type = "latex", omit = "Constant")
 
-  
+
+
+##### Correlation Plot with all qualitative and computational measures
+corr_data <- comment_data%>%
+  dplyr::select(del_complexity_G, gonzalez_width, max_thread_depth, arg_l_coms, rec_n_coms, TOXICITY, 
+                respect, argumentation, reciprocity, empathy, emotion, humor)%>%
+  mutate_all(~as.numeric(as.character(.)))%>%
+  plyr::rename(c("del_complexity_G" = "Structural Complexity",
+                 "gonzalez_width" = "Thread Width", 
+                 "max_thread_depth" = "Thread Depth",
+                 "arg_l_coms" = "Comment Length",
+                 "rec_n_coms" = "Number of Replies",
+                 "TOXICITY" = "Toxicity",
+                 "respect" = "Respect", 
+                 "argumentation" = "Argumentation",
+                 "reciprocity"  = "Reciprocity",
+                 "empathy" = "Empathy", 
+                 "emotion" = "Emotion",
+                 "humor" = "Humor"
+              
+  ))
+
+corr <- round(cor(corr_data, use = "pairwise.complete.obs"), 1)
+p.mat <- cor_pmat(corr_data, use = "pairwise.complete.obs")
+
+corr_c_plot <- ggcorrplot(corr, method = "circle", type = "upper", 
+                          outline.col = "white",
+                          title = "Bivariate Correlations - Comment Level Data", insig = "blank",
+                          tl.cex = 8,
+                          tl.srt = 90,
+                          lab = T, lab_size = 3, show.legend = F)
+corr_c_plot
+
+ggsave("output/corr_comments_plot.pdf", width = 6, height = 5, dpi = 300, corr_c_plot)
+
+### Scatterplot with textual measures between subreddits
+
+# create summary score of textual measures
+comment_data <- comment_data%>%
+  mutate(text_deliberation = (arg_l_coms+rec_n_coms+TOXICITY)/3,
+         deliberation = scale(deliberation),
+         text_deliberation = scale(text_deliberation),
+         del_complexity_G = scale(del_complexity_G))
+
+p1 <- ggplot(comment_data, aes(x=deliberation, y=text_deliberation, colour = subreddit)) + 
+  geom_point(alpha = 0.1)+
+  #geom_point(data=thread_data, alpha = 0.3, size=5)+
+  geom_point(data=comment_data %>% 
+               group_by(subreddit) %>% 
+               summarise_at(vars("deliberation","text_deliberation"), mean),
+             size=4, shape=23, fill = "black",stroke = 1.5)+
+  geom_smooth(data = comment_data, method = lm,  size = 0.5, color = "black",alpha = 0.3)+
+  theme_bw()+
+  scale_colour_manual(values = c("#fb9a99", "#1f78b4"))+
+  labs(colour ="Subreddit Mean",
+       x = "Deliberative quality (content coding)",
+       y = "Textual features of deliberative quality")+
+  theme(legend.position = c(.88,.9))+
+  ylim(-1, 3)
+
+ggsave("output/scatter_science_text.png", width = 6, height = 5, dpi = 500, p1)
+
+# run old plot again (using structural measures)
+p2 <- ggplot(comment_data, aes(x=deliberation, y=del_complexity_G, colour = subreddit)) + 
+  geom_point(alpha = 0.1)+
+  #geom_point(data=thread_data, alpha = 0.3, size=5)+
+  geom_point(data=comment_data %>% 
+               group_by(subreddit) %>% 
+               summarise_at(vars("deliberation","del_complexity_G"), mean),
+             size=4, shape=23, fill = "black",stroke = 1.5)+
+  geom_smooth(data = comment_data, method = lm,  size = 0.5, color = "black",alpha = 0.3)+
+  theme_bw()+
+  scale_colour_manual(values = c("#fb9a99", "#1f78b4"))+
+  labs(colour ="Subreddit Mean",
+       x = "Deliberative quality (content coding)",
+       y = "Structural complexity (depth x max width)")+
+  theme(legend.position = c(.88,.9))+
+  ylim(-1, 3)
+
+ggsave("output/scatter_science_del.png", width = 6, height = 5, dpi = 500, p2)
+
+combi <- grid.arrange(p2, p1, nrow = 1)
+
+ggsave("output/scatter_science_combi.png", width = 12, height = 5, dpi = 500, combi)
+
+
+
+
+
+
