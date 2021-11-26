@@ -51,18 +51,20 @@ mean(comment_data$rec_n_coms)
 #
 #write_xlsx(tox_data, "data/temp/tox_data.xlsx")
 
+tox_data <- read_excel("data/temp/tox_data.xlsx")
+
 tox_data$id_c <- tox_data$text_id
 
-comment_data <- left_join(comment_data, tox_data, by.y = "id_c")
-hist(comment_data$TOXICITY)
+comment_data_tox <- left_join(comment_data, tox_data, by.y = "id_c")
+hist(comment_data_tox$TOXICITY)
 
-comment_data%>%
+comment_data_tox%>%
   arrange(desc(TOXICITY))%>%
   select(text_c)%>%
   head() # pretty accurate haha
 
 # add scores to thread data
-thread_data <- comment_data%>%
+thread_data_tox <- comment_data_tox%>%
   dplyr::group_by(id_sub) %>% 
   mutate(TOXICITY = mean(TOXICITY),
          arg_l_coms = mean(arg_l_coms),
@@ -70,8 +72,8 @@ thread_data <- comment_data%>%
   slice(1)
 
 
-write.csv(comment_data, file = "data/final/comment_data_tox.csv")
-write.csv(thread_data, file = "data/final/thread_data_tox.csv")
+write.csv(comment_data_tox, file = "data/final/comment_data_tox.csv")
+write.csv(thread_data_tox, file = "data/final/thread_data_tox.csv")
 
 ########### Only run extension models ###########
 
@@ -129,47 +131,60 @@ ggsave("output/corr_comments_plot.pdf", width = 6, height = 5, dpi = 300, corr_c
 ### Scatterplot with textual measures between subreddits
 
 # create summary score of textual measures
-comment_data <- comment_data%>%
-  mutate(text_deliberation = (arg_l_coms+rec_n_coms+TOXICITY)/3,
+comment_data <- comment_data%>% # change to "thread_data" and run code below for thread level data
+  mutate(text_deliberation = (TOXICITY+arg_l_coms+rec_n_coms)/3,
          deliberation = scale(deliberation),
          text_deliberation = scale(text_deliberation),
          del_complexity_G = scale(del_complexity_G))
 
+sum <- comment_data%>%
+  group_by(subreddit)%>%
+  summarise(mean_del = mean(deliberation),
+            se_del = sd(deliberation)/sqrt(n()),
+            mean_txt = mean(text_deliberation),
+            se_txt = sd(text_deliberation)/sqrt(n()),
+            mean_str = mean(del_complexity_G),
+            se_str = sd(del_complexity_G)/sqrt(n()),
+            n = n()
+            )
+
 p1 <- ggplot(comment_data, aes(x=deliberation, y=text_deliberation, colour = subreddit)) + 
   geom_point(alpha = 0.1)+
   #geom_point(data=thread_data, alpha = 0.3, size=5)+
-  geom_point(data=comment_data %>% 
-               group_by(subreddit) %>% 
-               summarise_at(vars("deliberation","text_deliberation"), mean),
-             size=4, shape=23, fill = "black",stroke = 1.5)+
+  geom_point(data = sum, aes(x=mean_del, y=mean_txt),size = 3)+
+  geom_errorbarh(data = sum, aes(x=mean_del, y=mean_txt,
+                                 xmax = mean_del+se_del, xmin = mean_del-se_del))+
+  geom_errorbar(data = sum, aes(x=mean_del, y=mean_txt,
+                                 ymax = mean_txt+se_txt,ymin = mean_txt-se_txt))+
   geom_smooth(data = comment_data, method = lm,  size = 0.5, color = "black",alpha = 0.3)+
   theme_bw()+
-  scale_colour_manual(values = c("#fb9a99", "#1f78b4"))+
+  scale_colour_manual(values = c("blue", "red"))+
   labs(colour ="Subreddit Mean",
        x = "Deliberative quality (content coding)",
        y = "Textual features of deliberative quality")+
   theme(legend.position = c(.88,.9))+
   ylim(-1, 3)
-
+p1
 ggsave("output/scatter_science_text.png", width = 6, height = 5, dpi = 500, p1)
 
 # run old plot again (using structural measures)
 p2 <- ggplot(comment_data, aes(x=deliberation, y=del_complexity_G, colour = subreddit)) + 
   geom_point(alpha = 0.1)+
   #geom_point(data=thread_data, alpha = 0.3, size=5)+
-  geom_point(data=comment_data %>% 
-               group_by(subreddit) %>% 
-               summarise_at(vars("deliberation","del_complexity_G"), mean),
-             size=4, shape=23, fill = "black",stroke = 1.5)+
+  geom_point(data = sum, aes(x=mean_del, y=mean_str), size = 3)+
+  geom_errorbarh(data = sum, aes(x=mean_del, y=mean_str,
+                                 xmax = mean_del+se_del, xmin = mean_del-se_del))+
+  geom_errorbar(data = sum, aes(x=mean_del, y=mean_str,
+                                ymax = mean_str+se_str,ymin = mean_str-se_str))+
   geom_smooth(data = comment_data, method = lm,  size = 0.5, color = "black",alpha = 0.3)+
   theme_bw()+
-  scale_colour_manual(values = c("#fb9a99", "#1f78b4"))+
+  scale_colour_manual(values = c("blue", "red"))+
   labs(colour ="Subreddit Mean",
        x = "Deliberative quality (content coding)",
        y = "Structural complexity (depth x max width)")+
   theme(legend.position = c(.88,.9))+
   ylim(-1, 3)
-
+p2
 ggsave("output/scatter_science_del.png", width = 6, height = 5, dpi = 500, p2)
 
 combi <- grid.arrange(p2, p1, nrow = 1)
