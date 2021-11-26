@@ -87,12 +87,13 @@ mod3 <- lm(deliberation ~ scale(del_complexity_G), data = thread_data)
 mod4 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
 mod5 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
 mod6 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
+mod7 <- lm(deliberation ~ scale(del_complexity_G)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = comment_data)
+mod8 <- lm(deliberation ~ scale(del_complexity_G)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = thread_data)
 
-#thread level data
-stargazer(mod3, mod4, mod6, type = "latex", omit = "Constant")
 # comment level data
-stargazer(mod1, mod2, mod5, type = "latex", omit = "Constant")
-
+stargazer(mod1, mod2, mod5, mod7, type = "latex", omit = "Constant")
+#thread level data
+stargazer(mod3, mod4, mod6, mod8, type = "latex", omit = "Constant")
 
 
 ##### Correlation Plot with all qualitative and computational measures
