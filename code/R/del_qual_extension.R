@@ -81,14 +81,14 @@ comment_data <- read.csv( "data/final/comment_data_tox.csv")
 thread_data <- read.csv("data/final/thread_data_tox.csv")
 
 ### Try to ameliorate automated analysis 
-mod1 <- lm(deliberation ~ scale(del_complexity_G), data = comment_data)
+mod1 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width), data = comment_data)
 mod2 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
-mod3 <- lm(deliberation ~ scale(del_complexity_G), data = thread_data)
+mod3 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width), data = thread_data)
 mod4 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
-mod5 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
-mod6 <- lm(deliberation ~ scale(del_complexity_G)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
-mod7 <- lm(deliberation ~ scale(del_complexity_G)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = comment_data)
-mod8 <- lm(deliberation ~ scale(del_complexity_G)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = thread_data)
+mod5 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
+mod6 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
+mod7 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = comment_data)
+mod8 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = thread_data)
 
 # comment level data
 stargazer(mod1, mod2, mod5, mod7, type = "latex", omit = "Constant")
@@ -192,6 +192,8 @@ combi <- grid.arrange(p2, p1, nrow = 1)
 
 ggsave("output/scatter_science_combi.png", width = 12, height = 5, dpi = 500, combi)
 
+
+#### descriptives for automated measures between subreddits
 
 
 
