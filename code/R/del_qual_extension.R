@@ -91,9 +91,9 @@ mod7 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+scale(
 mod8 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = thread_data)
 
 # comment level data
-stargazer(mod1, mod2, mod5, mod7, type = "latex", omit = "Constant")
+stargazer(mod1, mod2, mod5, mod7, type = "html", omit = "Constant", out = "table1.html")
 #thread level data
-stargazer(mod3, mod4, mod6, mod8, type = "latex", omit = "Constant")
+stargazer(mod3, mod4, mod6, mod8, type = "html", omit = "Constant", out = "table2.html")
 
 
 ##### Correlation Plot with all qualitative and computational measures
