@@ -24,16 +24,15 @@ This repository contains supplementary material related to a project to aims to 
 `del_qual_preprocessing.R`
 * exclusion of off-topic discussions
 * recoding of some variable (e.g. civility)
-* construction of scales
+* construction of scales (depth, width, etc.)
 
-`del_qual_analysis.R`
-* comparison of deliberative quality and deliberative structure between subreddits (separately)
-* description of structural measure between subreddits and waves
-* exploration of relationships between automated and manual measures
-* comparison of measures between subreddits
+`del_qual_descriptives.R`
+* descriptives on discussion sample
+* depth x width scatter plot
 
 `del_qual_extension.R`
 * calculation of comment length, comment number per thread 
 * calculation of toxicity of comments using Google's perspectives API
 * running model with these three automated measures, comparison to structure
+* plots
 
