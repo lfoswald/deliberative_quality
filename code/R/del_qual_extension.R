@@ -33,7 +33,7 @@ mean(comment_data$rec_n_coms)
 # https://github.com/favstats/peRspective
 
 #usethis::edit_r_environ()
-# add:  perspective_api_key="AIzaSyB0dABPIS0t0GkVKJM7mZlG8n4HDmtCcs8"
+# add:  perspective_api_key="key"
 
 #test
 #prsp_score(comment_data$text_c[1], languages = "en",
