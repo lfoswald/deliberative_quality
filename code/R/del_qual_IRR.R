@@ -15,14 +15,12 @@ library(psych)
 
 data_coded <- read_excel("../../data/temp/data_qual_allthreads_LO.xlsx")
 
-############ GET SAMPLE ######
+############ Get counter coding sample ######
 data_coded <- data.frame(data_coded)
 data_coded[23:59][is.na(data_coded[23:59])] <- 0
 data_final <- data_coded %>% 
   filter(type_sub != 2)%>% # unrelated threads
   filter(!is.na(type_sub)) # drop those where submissions was deleted 
-
-### Checking Inter Coder Agreement
 
 # sample full threads
 sample_n_groups <- function(tbl, size, replace = FALSE, weight = NULL) {
@@ -60,7 +58,7 @@ data_training <- data_coded%>%
 
 #write_xlsx(data_training, "data_training.xlsx")
 
-########## CODE CODE CODE #######
+########## Assess inter-coder agreement #######
 
 IRR_sample_LO <- read_excel("../../data/temp/data_qual_allthreads_LO.xlsx")
 IRR_sample_C1 <- read_excel("../../data/temp/Coding_Grace_31.03.21.xlsx")
@@ -92,7 +90,6 @@ guilford.g <- function(df){
 
 perc_agree <- c()
 base_rate <- c()
-krip_alpha <- c()
 guilford_g <- c()
 
 for(var in var_names) {
@@ -103,9 +100,6 @@ for(var in var_names) {
   
   base = table(dat)[1]/sum(table(dat))
   base_rate = c(base_rate, base)
-  
-  krip = kripp.alpha(t(dat))
-  krip_alpha = c(krip_alpha, krip$value)
   
   G = guilford.g(dat)
   guilford_g = c(guilford_g, G)

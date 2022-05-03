@@ -123,13 +123,5 @@ thread_data <- data%>%
          moderate = mean(moderate))%>%
   slice(1)
 
-
-
-write.csv(data, file = "data/final/comment_data_preprocessed.csv")
-write.csv(thread_data, file = "data/final/thread_data_preprocessed.csv")
-
-
-
-
-
-
+#write.csv(data, file = "data/final/comment_data_preprocessed.csv")
+#write.csv(thread_data, file = "data/final/thread_data_preprocessed.csv")

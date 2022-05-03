@@ -1,6 +1,5 @@
 ######### Automating the Analysis of Online Deliberation #############
 
-#devtools::install_github("favstats/peRspective")
 library(peRspective)
 library(tidyverse)
 library(readr)
@@ -75,12 +74,11 @@ thread_data_tox <- comment_data_tox%>%
 write.csv(comment_data_tox, file = "data/final/comment_data_tox.csv")
 write.csv(thread_data_tox, file = "data/final/thread_data_tox.csv")
 
-########### Only run extension models ###########
+########### multiple models ###########
 
 comment_data <- read.csv( "data/final/comment_data_tox.csv")
 thread_data <- read.csv("data/final/thread_data_tox.csv")
 
-### Try to ameliorate automated analysis 
 mod1 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width), data = comment_data)
 mod2 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
 mod3 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width), data = thread_data)
@@ -127,9 +125,10 @@ corr_c_plot <- ggcorrplot(corr, method = "circle", type = "upper",
                           lab = T, lab_size = 3, show.legend = F)
 corr_c_plot
 
-ggsave("output/corr_comments_plot.pdf", width = 6, height = 5, dpi = 300, corr_c_plot)
+#ggsave("output/corr_comments_plot.pdf", width = 6, height = 5, dpi = 300, corr_c_plot)
 
-### Scatterplot with textual measures between subreddits
+
+### Scatterplots of method comparision
 
 # create summary score of textual measures
 comment_data <- comment_data%>% # change to "thread_data" and run code below for thread level data
@@ -166,7 +165,7 @@ p1 <- ggplot(comment_data, aes(x=deliberation, y=text_deliberation, colour = sub
   theme(legend.position = c(.88,.9))+
   ylim(-1, 3)
 p1
-ggsave("output/scatter_science_text.png", width = 6, height = 5, dpi = 500, p1)
+#ggsave("output/scatter_science_text.png", width = 6, height = 5, dpi = 500, p1)
 
 # run old plot again (using structural measures)
 p2 <- ggplot(comment_data, aes(x=deliberation, y=del_complexity_G, colour = subreddit)) + 
@@ -186,14 +185,11 @@ p2 <- ggplot(comment_data, aes(x=deliberation, y=del_complexity_G, colour = subr
   theme(legend.position = c(.88,.9))+
   ylim(-1, 3)
 p2
-ggsave("output/scatter_science_del.png", width = 6, height = 5, dpi = 500, p2)
+#ggsave("output/scatter_science_del.png", width = 6, height = 5, dpi = 500, p2)
 
 combi <- grid.arrange(p2, p1, nrow = 1)
 
-ggsave("output/scatter_science_combi.png", width = 12, height = 5, dpi = 500, combi)
-
-
-#### descriptives for automated measures between subreddits
+#ggsave("output/scatter_science_combi.png", width = 12, height = 5, dpi = 500, combi)
 
 
 
