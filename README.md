@@ -19,20 +19,22 @@ This repository contains supplementary material related to a project to aims to 
 ## 2. Analysis `R`
 
 `del_qual_IRR.R`
-* calculation of interrater agreement scores for all variables
+* drawing cross-coding sample
+* calculation of interrater agreement scores
 
 `del_qual_preprocessing.R`
 * exclusion of off-topic discussions
 * recoding of some variable (e.g. civility)
-* construction of scales (depth, width, etc.)
+* construction of scales 
 
 `del_qual_descriptives.R`
-* descriptives on discussion sample
+* sample descriptives
 * depth x width scatter plot
 
 `del_qual_extension.R`
 * calculation of comment length, comment number per thread 
 * calculation of toxicity of comments using Google's perspectives API
-* running model with these three automated measures, comparison to structure
-* plots
+* multiple models for contstruct validation 
+* correlation plot
+* method comparison scatter plots
 
