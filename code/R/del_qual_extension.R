@@ -192,6 +192,3 @@ combi <- grid.arrange(p2, p1, nrow = 1)
 #ggsave("output/scatter_science_combi.png", width = 12, height = 5, dpi = 500, combi)
 
 
-
-
-
