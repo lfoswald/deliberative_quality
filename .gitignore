@@ -4,3 +4,5 @@ output
 *.Rproj
 .Rproj.user
 politeness-test.R
+.pdf
+.html
