@@ -1,0 +1,200 @@
+library(peRspective)
+library(tidyverse)
+library(readr)
+library(readxl)
+library(xtable)
+library(knitr)
+library(kableExtra)
+library(stargazer)
+library(writexl)
+library(psych)
+library(gridExtra)
+library(ggcorrplot)
+library(glmnet)
+library(performance)
+library(caret)
+library(estimatr)
+library(texreg)
+library(glinternet)
+
+comment_data <- read.csv( "data/final/comment_data_tox.csv")
+thread_data <- read.csv("data/final/thread_data_tox.csv")
+
+## scaling variables
+scale_vars <- function(x, na.rm = FALSE){ 
+  (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
+}
+
+ml_data <- comment_data%>%
+  dplyr::select(max_thread_depth, gonzalez_width, arg_l_coms, TOXICITY, rec_n_coms ,opposing,
+                deliberation, reciprocity, respect, argumentation)%>%
+  mutate(across(where(is.numeric), ~ scale_vars(.x, na.rm = TRUE)))
+
+ml_data_t <- thread_data%>%
+  dplyr::select(max_thread_depth, gonzalez_width, arg_l_coms, TOXICITY, rec_n_coms ,opposing,
+                deliberation, reciprocity, respect, argumentation)%>%
+  mutate(across(where(is.numeric), ~ scale_vars(.x, na.rm = TRUE)))
+
+# linear regression models
+# comment level data
+reg_mod1 <- lm_robust(respect ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2, data = ml_data)
+reg_mod2 <- lm_robust(reciprocity ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2, data = ml_data)
+reg_mod3 <- lm_robust(argumentation ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2, data = ml_data)
+reg_mod4 <- lm_robust(deliberation ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2, data = ml_data)
+# thread level data
+reg_mod5 <- lm_robust(respect ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2 , data = ml_data_t)
+reg_mod6 <- lm_robust(reciprocity ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2 , data = ml_data_t)
+reg_mod7 <- lm_robust(argumentation ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2 , data = ml_data_t)
+reg_mod8 <- lm_robust(deliberation ~ (max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing)^2 , data = ml_data_t)
+
+texreg(list(reg_mod1, reg_mod2, reg_mod3, reg_mod4), include.ci = FALSE, single.row = TRUE,
+      # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+      #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+       caption = "Comment level data")
+
+knitreg(list(reg_mod1, reg_mod2, reg_mod3, reg_mod4), include.ci = FALSE, single.row = TRUE,
+      #  custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+      #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+       caption = "Comment level data")
+
+texreg(list(reg_mod5, reg_mod6, reg_mod7, reg_mod8), include.ci = FALSE, single.row = TRUE,
+       #custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+       #                    'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+       caption = "Thread level data")
+
+knitreg(list(reg_mod5, reg_mod6, reg_mod7, reg_mod8), include.ci = FALSE, single.row = TRUE,
+        #custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+        #                    'Toxicity', 'Number of Comments', 'Opposing'),
+        #custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+        caption = "Thread level data")
+
+
+####################### LASSO WITH INTERACTION #################################
+
+# train / test split
+train_data <- ml_data %>% sample_frac(.80)
+test_data <- ml_data %>% sample_frac(.20)
+
+X_full <- ml_data %>% dplyr::select(-respect, -reciprocity, -argumentation, -deliberation) 
+X_train <- train_data %>% dplyr::select(-respect, -reciprocity, -argumentation, -deliberation) 
+X_test <- test_data %>% dplyr::select(-respect, -reciprocity, -argumentation, -deliberation) 
+
+# respect
+y_full_resp <- ml_data$respect 
+y_train_resp <- train_data$respect
+y_test_resp <- test_data$respect
+# reciprocity
+y_full_reci <- ml_data$reciprocity 
+y_train_reci <- train_data$reciprocity
+y_test_reci <- test_data$reciprocity
+# argumentation
+y_full_arg <- ml_data$argumentation 
+y_train_arg <- train_data$argumentation
+y_test_arg <- test_data$argumentation
+# deliberation
+y_full_del <- ml_data$deliberation 
+y_train_del <- train_data$deliberation
+y_test_del <- test_data$deliberation
+
+
+# RESPECT
+
+# fit lasso model to training data
+cv_fit <- glinternet.cv(data.matrix(X_train), y_train_resp, numLevels=rep(1,ncol(X_train))) 
+plot(cv_fit)
+
+# select best lambda value
+i_1Std <- which(cv_fit$lambdaHat1Std == cv_fit$lambda)
+
+# show selected coefficients at this lambda value
+coefs <- coef(cv_fit$glinternetFit)[[i_1Std]]
+coefs$mainEffects #position of main effect coefficients
+coefs$mainEffectsCoef # value of main effect coefficients
+coefs$interactions$contcont # matrixes of interaction effecs
+
+# RMSE
+sqrt(cv_fit$cvErr[[i_1Std]])
+
+
+# RECIPROCITY
+
+# fit lasso model to training data
+cv_fit <- glinternet.cv(data.matrix(X_train), y_train_reci, numLevels=rep(1,ncol(X_train))) 
+plot(cv_fit)
+
+# select best lambda value
+i_1Std <- which(cv_fit$lambdaHat1Std == cv_fit$lambda)
+
+# show selected coefficients at this lambda value
+coefs <- coef(cv_fit$glinternetFit)[[i_1Std]]
+coefs$mainEffects #position of main effect coefficients
+coefs$mainEffectsCoef # value of main effect coefficients
+coefs$interactions$contcont # matrixes of interaction effecs - pairs! 
+coefs$interactionsCoef$contcont
+
+# RMSE
+sqrt(cv_fit$cvErr[[i_1Std]])
+
+# ARGUMENTATION
+
+# fit lasso model to training data
+cv_fit <- glinternet.cv(data.matrix(X_train), y_train_arg, numLevels=rep(1,ncol(X_train))) 
+plot(cv_fit)
+
+# select best lambda value
+i_1Std <- which(cv_fit$lambdaHat1Std == cv_fit$lambda)
+
+# show selected coefficients at this lambda value
+coefs <- coef(cv_fit$glinternetFit)[[i_1Std]]
+coefs$mainEffects #position of main effect coefficients
+coefs$mainEffectsCoef # value of main effect coefficients
+coefs$interactions$contcont # matrixes of interaction effecs - pairs! 
+coefs$interactionsCoef$contcont
+
+# RMSE
+sqrt(cv_fit$cvErr[[i_1Std]])
+
+# DELIBERATION
+
+# fit lasso model to training data
+cv_fit <- glinternet.cv(data.matrix(X_train), y_train_del, numLevels=rep(1,ncol(X_train))) 
+plot(cv_fit)
+
+# select best lambda value
+i_1Std <- which(cv_fit$lambdaHat1Std == cv_fit$lambda)
+
+# show selected coefficients at this lambda value
+coefs <- coef(cv_fit$glinternetFit)[[i_1Std]]
+coefs$mainEffects #position of main effect coefficients
+coefs$mainEffectsCoef # value of main effect coefficients
+coefs$interactions$contcont # matrixes of interaction effecs - pairs! 
+coefs$interactionsCoef$contcont
+
+# RMSE
+sqrt(cv_fit$cvErr[[i_1Std]])
+
+
+#### BUILDING PLACEHOLDER LASSO MODELS FOR REPORTING (INTERACTION) - paste in actual values from above!!
+
+lasso_mod1 <- lm_robust(respect ~ TOXICITY, data = ml_data)
+lasso_mod2 <- lm_robust(reciprocity ~ max_thread_depth, data = ml_data)
+lasso_mod3 <- lm_robust(argumentation ~ arg_l_coms, data = ml_data)
+lasso_mod4 <- lm_robust(deliberation ~ max_thread_depth + arg_l_coms, data = ml_data)
+
+texreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE, single.row = TRUE,
+       # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+       #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Respect Lasso","Reciprocity","Reciprocity Lasso","Argumentation","Argumentation Lasso"),
+       caption = "Comment level data, Interaction Models")
+
+knitreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE, single.row = TRUE,
+       # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+       #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Respect Lasso","Reciprocity","Reciprocity Lasso","Argumentation","Argumentation Lasso"),
+       caption = "Comment level data, Interaction Models")
+
+
+

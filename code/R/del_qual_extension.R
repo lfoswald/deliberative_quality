@@ -13,6 +13,7 @@ library(psych)
 library(gridExtra)
 library(ggcorrplot)
 
+
 comment_data <- read.csv( "data/final/comment_data_preprocessed.csv")
 thread_data <- read.csv("data/final/thread_data_preprocessed.csv")
 
@@ -71,28 +72,12 @@ thread_data_tox <- comment_data_tox%>%
   slice(1)
 
 
-write.csv(comment_data_tox, file = "data/final/comment_data_tox.csv")
-write.csv(thread_data_tox, file = "data/final/thread_data_tox.csv")
+#write.csv(comment_data_tox, file = "data/final/comment_data_tox.csv")
+#write.csv(thread_data_tox, file = "data/final/thread_data_tox.csv")
 
-########### multiple models ###########
-
-comment_data <- read.csv( "data/final/comment_data_tox.csv")
-thread_data <- read.csv("data/final/thread_data_tox.csv")
-
-mod1 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width), data = comment_data)
-mod2 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
-mod3 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width), data = thread_data)
-mod4 <- lm(deliberation ~ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
-mod5 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = comment_data)
-mod6 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+ scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms), data = thread_data)
-mod7 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = comment_data)
-mod8 <- lm(deliberation ~ scale(max_thread_depth) + scale(gonzalez_width)+scale(log(arg_l_coms)) + scale(TOXICITY) + scale(rec_n_coms) + opposing, data = thread_data)
-
-# comment level data
-stargazer(mod1, mod2, mod5, mod7, type = "html", omit = "Constant", out = "table1.html")
-#thread level data
-stargazer(mod3, mod4, mod6, mod8, type = "html", omit = "Constant", out = "table2.html")
-
+comment_data <- comment_data_tox
+thread_data <- thread_data_tox
+############## PLOTS ############################################################
 
 ##### Correlation Plot with all qualitative and computational measures
 corr_data <- comment_data%>%

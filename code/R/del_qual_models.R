@@ -1,0 +1,254 @@
+library(peRspective)
+library(tidyverse)
+library(readr)
+library(readxl)
+library(xtable)
+library(knitr)
+library(kableExtra)
+library(stargazer)
+library(writexl)
+library(psych)
+library(gridExtra)
+library(ggcorrplot)
+library(glmnet)
+library(performance)
+library(caret)
+library(estimatr)
+library(texreg)
+library(glinternet)
+
+comment_data <- read.csv( "data/final/comment_data_tox.csv")
+thread_data <- read.csv("data/final/thread_data_tox.csv")
+
+## scaling variables
+scale_vars <- function(x, na.rm = FALSE){ 
+  (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
+}
+
+ml_data <- comment_data%>%
+  dplyr::select(max_thread_depth, gonzalez_width, arg_l_coms, TOXICITY, rec_n_coms ,opposing,
+                deliberation, reciprocity, respect, argumentation)%>%
+  mutate(across(where(is.numeric), ~ scale_vars(.x, na.rm = TRUE)))
+
+ml_data_t <- thread_data%>%
+  dplyr::select(max_thread_depth, gonzalez_width, arg_l_coms, TOXICITY, rec_n_coms ,opposing,
+                deliberation, reciprocity, respect, argumentation)%>%
+  mutate(across(where(is.numeric), ~ scale_vars(.x, na.rm = TRUE)))
+
+# linear regression models
+# comment level data
+reg_mod1 <- lm_robust(respect ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data)
+reg_mod2 <- lm_robust(reciprocity ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data)
+reg_mod3 <- lm_robust(argumentation ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data)
+reg_mod4 <- lm_robust(deliberation ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data)
+# thread level data
+reg_mod5 <- lm_robust(respect ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data_t)
+reg_mod6 <- lm_robust(reciprocity ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data_t)
+reg_mod7 <- lm_robust(argumentation ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data_t)
+reg_mod8 <- lm_robust(deliberation ~ max_thread_depth + gonzalez_width + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data_t)
+
+texreg(list(reg_mod1, reg_mod2, reg_mod3, reg_mod4), include.ci = FALSE, single.row = TRUE,
+      # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+      #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+       caption = "Comment level data")
+
+knitreg(list(reg_mod1, reg_mod2, reg_mod3, reg_mod4), include.ci = FALSE, single.row = TRUE,
+      #  custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+      #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+       caption = "Comment level data")
+
+texreg(list(reg_mod5, reg_mod6, reg_mod7, reg_mod8), include.ci = FALSE, single.row = TRUE,
+       custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+                           'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+       caption = "Thread level data")
+
+knitreg(list(reg_mod5, reg_mod6, reg_mod7, reg_mod8), include.ci = FALSE, single.row = TRUE,
+        custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+                            'Toxicity', 'Number of Comments', 'Opposing'),
+        #custom.model.names = c("Respect","Reciprocity","Argumentation","Deliberation"),
+        caption = "Thread level data")
+
+
+##### LASSO MODELS ############################################################################
+
+# train / test split
+train_data <- ml_data %>% sample_frac(.80)
+test_data <- ml_data %>% sample_frac(.20)
+
+X_full <- ml_data %>% dplyr::select(-respect, -reciprocity, -argumentation, -deliberation) 
+X_train <- train_data %>% dplyr::select(-respect, -reciprocity, -argumentation, -deliberation) 
+X_test <- test_data %>% dplyr::select(-respect, -reciprocity, -argumentation, -deliberation) 
+
+# respect
+y_full_resp <- ml_data$respect 
+y_train_resp <- train_data$respect
+y_test_resp <- test_data$respect
+# reciprocity
+y_full_reci <- ml_data$reciprocity 
+y_train_reci <- train_data$reciprocity
+y_test_reci <- test_data$reciprocity
+# argumentation
+y_full_arg <- ml_data$argumentation 
+y_train_arg <- train_data$argumentation
+y_test_arg <- test_data$argumentation
+# deliberation
+y_full_del <- ml_data$deliberation 
+y_train_del <- train_data$deliberation
+y_test_del <- test_data$deliberation
+
+# define lambda grid for lasso model
+grid = 10^seq(10, -2, length = 100)
+
+########## RESPECT
+
+lasso_mod <- glmnet(X_train, y_train_resp, alpha = 1)
+
+# select best lambda value
+cv.out = cv.glmnet(data.matrix(X_train), y_train_resp, alpha = 1) 
+plot(cv.out) # Draw plot of training MSE as a function of lambda
+bestlam = cv.out$lambda.min # Select lamda that minimizes training MSE
+
+# Use best lambda to predict test data
+lasso_pred = predict(lasso_mod, s = bestlam, newx = data.matrix(X_test)) 
+test_mse_resp <- mean((lasso_pred - y_test_resp )^2) # Calculate test MSE
+
+# Fit lasso model on full dataset
+out = glmnet(X_full, y_full_resp, alpha = 1, lambda = grid) 
+lasso_coef = predict(out, type = "coefficients", s = bestlam)[1:7,] # Display coefficients using lambda chosen by CV
+coefs_resp <- lasso_coef[lasso_coef != 0] # Display only non-zero coefficients
+
+#find R-squared of model on training data
+y_predicted <- predict(lasso_mod, s = bestlam, newx = data.matrix(X_train))
+sst <- sum((y_train_resp - mean(y_train_resp))^2)
+sse <- sum((y_predicted - y_train_resp)^2)
+r2_resp <- 1 - sse/sst
+
+#find RMSE of model on training data
+resids2 <- (y_train_resp - y_predicted)^2
+N = length(y_predicted)
+rmse_resp <- round(sqrt(sum(resids2)/N), 2)
+
+lasso_respect <- list(bestlam, test_mse_resp, coefs_resp, r2_resp, rmse_resp)
+
+########## RECIPROCITY
+
+lasso_mod <- glmnet(X_train, y_train_reci, alpha = 1)
+
+# select best lambda value
+cv.out = cv.glmnet(data.matrix(X_train), y_train_reci, alpha = 1) 
+plot(cv.out) # Draw plot of training MSE as a function of lambda
+bestlam = cv.out$lambda.min # Select lamda that minimizes training MSE
+
+# Use best lambda to predict test data
+lasso_pred = predict(lasso_mod, s = bestlam, newx = data.matrix(X_test)) 
+test_mse_reci <- mean((lasso_pred - y_test_reci )^2) # Calculate test MSE
+
+# Fit lasso model on full dataset
+out = glmnet(X_full, y_full_reci, alpha = 1, lambda = grid) 
+lasso_coef = predict(out, type = "coefficients", s = bestlam)[1:7,] # Display coefficients using lambda chosen by CV
+coefs_reci <- lasso_coef[lasso_coef != 0] # Display only non-zero coefficients
+
+#find R-squared of model on training data
+y_predicted <- predict(lasso_mod, s = bestlam, newx = data.matrix(X_train))
+sst <- sum((y_train_reci - mean(y_train_reci))^2)
+sse <- sum((y_predicted - y_train_reci)^2)
+r2_reci <- 1 - sse/sst
+
+#find RMSE of model on training data
+resids2 <- (y_train_reci - y_predicted)^2
+N = length(y_predicted)
+rmse_reci <- round(sqrt(sum(resids2)/N), 2)
+
+lasso_reciprocity <- list(bestlam, test_mse_reci, coefs_reci, r2_reci, rmse_reci)
+
+########## ARGUMENTATION
+
+lasso_mod <- glmnet(X_train, y_train_arg, alpha = 1)
+
+# select best lambda value
+cv.out = cv.glmnet(data.matrix(X_train), y_train_arg, alpha = 1) 
+plot(cv.out) # Draw plot of training MSE as a function of lambda
+bestlam = cv.out$lambda.min # Select lamda that minimizes training MSE
+
+# Use best lambda to predict test data
+lasso_pred = predict(lasso_mod, s = bestlam, newx = data.matrix(X_test)) 
+test_mse_arg <- mean((lasso_pred - y_test_arg)^2) # Calculate test MSE
+
+# Fit lasso model on full dataset
+out = glmnet(X_full, y_full_arg, alpha = 1, lambda = grid) 
+lasso_coef = predict(out, type = "coefficients", s = bestlam)[1:7,] # Display coefficients using lambda chosen by CV
+coefs_arg <- lasso_coef[lasso_coef != 0] # Display only non-zero coefficients
+
+#find R-squared of model on training data
+y_predicted <- predict(lasso_mod, s = bestlam, newx = data.matrix(X_train))
+sst <- sum((y_train_arg - mean(y_train_arg))^2)
+sse <- sum((y_predicted - y_train_arg)^2)
+r2_arg <- 1 - sse/sst
+
+#find RMSE of model on training data
+resids2 <- (y_train_arg - y_predicted)^2
+N = length(y_predicted)
+rmse_arg <- round(sqrt(sum(resids2)/N), 2)
+
+lasso_argumentation <- list(bestlam, test_mse_arg, coefs_arg, r2_arg, rmse_arg)
+
+########## DELIBERATION
+
+lasso_mod <- glmnet(X_train, y_train_del, alpha = 1)
+
+# select best lambda value
+cv.out = cv.glmnet(data.matrix(X_train), y_train_del, alpha = 1) 
+plot(cv.out) # Draw plot of training MSE as a function of lambda
+bestlam = cv.out$lambda.min # Select lamda that minimizes training MSE
+
+# Use best lambda to predict test data
+lasso_pred = predict(lasso_mod, s = bestlam, newx = data.matrix(X_test)) 
+test_mse_del <- mean((lasso_pred - y_test_del )^2) # Calculate test MSE
+
+# Fit lasso model on full dataset
+out = glmnet(X_full, y_full_del, alpha = 1, lambda = grid) 
+lasso_coef = predict(out, type = "coefficients", s = bestlam)[1:7,] # Display coefficients using lambda chosen by CV
+coefs_del <- lasso_coef[lasso_coef != 0] # Display only non-zero coefficients
+
+#find R-squared of model on training data
+y_predicted <- predict(lasso_mod, s = bestlam, newx = data.matrix(X_train))
+sst <- sum((y_train_del - mean(y_train_del))^2)
+sse <- sum((y_predicted - y_train_del)^2)
+r2_del <- 1 - sse/sst
+
+#find RMSE of model on training data
+resids2 <- (y_train_del - y_predicted)^2
+N = length(y_predicted)
+rmse_del <- round(sqrt(sum(resids2)/N), 2)
+
+lasso_deliberation <- list(bestlam, test_mse_del, coefs_del, r2_del, rmse_del)
+
+
+#### BUILDING PLACEHOLDER LASSO MODELS FOR REPORTING - paste in actual values from lists!!
+lasso_respect
+lasso_reciprocity
+lasso_argumentation
+lasso_deliberation
+
+lasso_mod1 <- lm_robust(respect ~ arg_l_coms + TOXICITY, data = ml_data)
+lasso_mod2 <- lm_robust(reciprocity ~ max_thread_depth + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data)
+lasso_mod3 <- lm_robust(argumentation ~ max_thread_depth + arg_l_coms + TOXICITY, data = ml_data)
+lasso_mod4 <- lm_robust(deliberation ~ max_thread_depth + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data)
+
+texreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE, single.row = TRUE,
+       # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+       #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Respect Lasso","Reciprocity","Reciprocity Lasso","Argumentation","Argumentation Lasso"),
+       caption = "Comment level data")
+
+knitreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE, single.row = TRUE,
+       # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
+       #                      'Toxicity', 'Number of Comments', 'Opposing'),
+       custom.model.names = c("Respect","Respect Lasso","Reciprocity","Reciprocity Lasso","Argumentation","Argumentation Lasso"),
+       caption = "Comment level data")
+
+
+
