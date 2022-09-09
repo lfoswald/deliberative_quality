@@ -238,7 +238,7 @@ lasso_mod2 <- lm_robust(reciprocity ~ max_thread_depth + arg_l_coms + TOXICITY +
 lasso_mod3 <- lm_robust(argumentation ~ max_thread_depth + arg_l_coms + TOXICITY, data = ml_data)
 lasso_mod4 <- lm_robust(deliberation ~ max_thread_depth + arg_l_coms + TOXICITY + rec_n_coms + opposing, data = ml_data)
 
-texreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE, single.row = TRUE,
+texreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE, 
        # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
        #                      'Toxicity', 'Number of Comments', 'Opposing'),
        custom.model.names = c("Respect","Respect Lasso","Reciprocity","Reciprocity Lasso","Argumentation","Argumentation Lasso"),

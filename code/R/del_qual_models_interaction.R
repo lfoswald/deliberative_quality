@@ -118,6 +118,16 @@ coefs$interactions$contcont # matrixes of interaction effecs
 # RMSE
 sqrt(cv_fit$cvErr[[i_1Std]])
 
+# R2
+y_predicted <- predict(cv_fit, labda = i_1Std, X = data.matrix(X_train))
+sst <- sum((y_train_resp - mean(y_train_resp))^2)
+sse <- sum((y_predicted - y_train_resp)^2)
+1 - sse/sst
+
+# Use best lambda to predict test data
+lasso_pred = predict(cv_fit, labda = i_1Std, X = data.matrix(X_test)) 
+mean((lasso_pred - y_test_resp )^2) # Calculate test MSE
+
 
 # RECIPROCITY
 
@@ -138,6 +148,17 @@ coefs$interactionsCoef$contcont
 # RMSE
 sqrt(cv_fit$cvErr[[i_1Std]])
 
+# R2
+y_predicted <- predict(cv_fit, labda = i_1Std, X = data.matrix(X_train))
+sst <- sum((y_train_reci - mean(y_train_reci))^2)
+sse <- sum((y_predicted - y_train_reci)^2)
+1 - sse/sst
+
+# Use best lambda to predict test data
+lasso_pred = predict(cv_fit, labda = i_1Std, X = data.matrix(X_test)) 
+mean((lasso_pred - y_test_reci )^2) # Calculate test MSE
+
+
 # ARGUMENTATION
 
 # fit lasso model to training data
@@ -156,6 +177,17 @@ coefs$interactionsCoef$contcont
 
 # RMSE
 sqrt(cv_fit$cvErr[[i_1Std]])
+
+# R2
+y_predicted <- predict(cv_fit, labda = i_1Std, X = data.matrix(X_train))
+sst <- sum((y_train_arg - mean(y_train_arg))^2)
+sse <- sum((y_predicted - y_train_arg)^2)
+1 - sse/sst
+
+# Use best lambda to predict test data
+lasso_pred = predict(cv_fit, labda = i_1Std, X = data.matrix(X_test)) 
+mean((lasso_pred - y_test_arg )^2) # Calculate test MSE
+
 
 # DELIBERATION
 
@@ -184,7 +216,7 @@ lasso_mod2 <- lm_robust(reciprocity ~ max_thread_depth, data = ml_data)
 lasso_mod3 <- lm_robust(argumentation ~ arg_l_coms, data = ml_data)
 lasso_mod4 <- lm_robust(deliberation ~ max_thread_depth + arg_l_coms, data = ml_data)
 
-texreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE, single.row = TRUE,
+texreg(list(reg_mod1, lasso_mod1, reg_mod2, lasso_mod2, reg_mod3, lasso_mod3), include.ci = FALSE,
        # custom.coef.names=c('Intercept', 'Thread width', 'Thread depth', 'Comment length',
        #                      'Toxicity', 'Number of Comments', 'Opposing'),
        custom.model.names = c("Respect","Respect Lasso","Reciprocity","Reciprocity Lasso","Argumentation","Argumentation Lasso"),
