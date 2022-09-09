@@ -112,6 +112,42 @@ corr_c_plot
 
 #ggsave("output/corr_comments_plot.pdf", width = 6, height = 5, dpi = 300, corr_c_plot)
 
+##### Correlation Plot with all qualitative and computational measures - RAW indicators
+names(comment_data)
+corr_data2 <- comment_data%>%
+  dplyr::select(civ_cap:conspiracy, gonzalez_width, -unrelated, max_thread_depth, arg_l_coms, rec_n_coms, TOXICITY)%>%
+  mutate_all(~as.numeric(as.character(.)))%>%
+  plyr::rename(c("gonzalez_width" = "Thread Width", 
+                 "max_thread_depth" = "Thread Depth",
+                 "arg_l_coms" = "Comment Length",
+                 "rec_n_coms" = "Number of Replies",
+                 "TOXICITY" = "Toxicity"))
+
+corr <- round(cor(corr_data2, use = "pairwise.complete.obs"), 1)
+p.mat <- cor_pmat(corr_data2, use = "pairwise.complete.obs")
+
+relevant_slice <- data.frame(corr)
+corr <- relevant_slice[1:36,37:41]
+
+corr2 <- corr %>%
+  rownames_to_column() %>%
+  gather(colname, value, -rowname)
+corr
+
+corr_c_plot2 <- ggplot(corr2, aes(x = colname, y = rowname, fill = value)) +
+  geom_tile()+
+  scale_fill_gradient2(low="darkblue", high="darkred", guide="colorbar", name = "Correlation")+
+  geom_text(aes(label = round(value, 1))) +
+  ylab("Manual Coding Category")+
+  xlab("Automated Measure")+
+  theme_minimal()+
+  scale_x_discrete(position = "top")
+
+
+corr_c_plot2 
+
+ggsave("output/corr_comments_plot_raw_scales.pdf", width = 10, height = 12, dpi = 300, corr_c_plot2)
+
 
 ### Scatterplots of method comparision
 
