@@ -6,3 +6,6 @@ output
 politeness-test.R
 .pdf
 .html
+.RData
+.Rhistory
+.DS_Store
