@@ -17,8 +17,7 @@ library(gridExtra)
 library(ggcorrplot)
 
 
-
-comment_data <- read.csv( "data/final/comment_data_preprocessed.csv")
+comment_data <- read.csv( "data/final/comment_data_tox.csv")
 
 names(comment_data)
 
@@ -42,16 +41,16 @@ full_data <- cbind(comment_data, polite.data)
 
 corr_data <- full_data%>%
   dplyr::select(gonzalez_width, max_thread_depth, 
-                #arg_l_coms, rec_n_coms, TOXICITY, 
+                arg_l_coms, rec_n_coms, TOXICITY, 
                 respect, argumentation, reciprocity, empathy, emotion, humor, 
                 Hedges, Negative.Emotion, Positive.Emotion, Negation, Swearing, Reasoning)%>%
   mutate_all(~as.numeric(as.character(.)))%>%
   plyr::rename(c(
                  "gonzalez_width" = "Thread Width", 
                  "max_thread_depth" = "Thread Depth",
-                 #"arg_l_coms" = "Comment Length",
-                 #"rec_n_coms" = "Number of Replies",
-                 #"TOXICITY" = "Toxicity",
+                 "arg_l_coms" = "Comment Length",
+                 "rec_n_coms" = "Number of Replies",
+                 "TOXICITY" = "Toxicity",
                  "respect" = "Respect", 
                  "argumentation" = "Argumentation",
                  "reciprocity"  = "Reciprocity",
